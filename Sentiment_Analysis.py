@@ -7,6 +7,7 @@ import sys
 import numpy
 import nltk
 import re
+import matplotlib.pyplot as plt
 from nltk.corpus import stopwords  
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.feature_extraction.text import CountVectorizer
@@ -15,6 +16,7 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 from sklearn.feature_extraction.text import TfidfVectorizer
+
 
 from sklearn.model_selection import cross_val_score
 
@@ -157,37 +159,78 @@ def PreProcessing():
 
 
 
-def trainingData(vectorizedMatrix, labelList, vectorizedTestingMatrix):
+def trainingData(vectorizedMatrix, labelList):
 
 	X = vectorizedMatrix
 	y = labelList
-	X_test = vectorizedTestingMatrix
-
 
 	classifier2 = LogisticRegression(multi_class='auto')
-	makeCsv(X,y,classifier2,'testset_1.csv', vectorizedTestingMatrix)
+	logreg = classifier2.fit(X,y)
+
+	#cross validation accuracy score on data set.
+	#scores = cross_val_score(classifier2, X, y, cv=5)
+	#print(scores)
+
+	return logreg
 
 
-	# cross validation accuracy score on data set.
-	scores = cross_val_score(classifier2, X, y, cv=5)
-	print(scores)
 
-
-
-def makeCsv(X, Y, classifier, dataset,X_test):
+def predictTest(X, Y, classifier, dataset,X_test):
 	openData = open(dataset)
 	data = list(csv.reader(openData))
-	data.pop(0) 	
-	w = open("Predictions.csv" , "w")
+	data.pop(0) 
+	phraseId = []
+	for x in range(0,len(data)):
+		instance = data[x]
+		phraseId.append(instance[0])
+
+
+	#w = open("predictions.csv" , "w")
+	#w.write("PhraseId, Sentiment\n")
+	predictedLabels = classifier.predict(X_test)
+
+	return phraseId, predictedLabels
+
+
+def makeCsv(phraseId, predictedLabels):
+	data = list(csv.reader(open('testset_1.csv')))
+	data.pop(0)
+	w = open("predictions.csv" , "w")
 	w.write("PhraseId, Sentiment\n")
-	logreg = classifier.fit(X, Y)
-	predictedLabels = logreg.predict(X_test)
 	for i in range(0,len(predictedLabels)):
 		w.write(data[i][0] + ',' + predictedLabels[i] + '\n')
 
 
+# takes in the phrase id list and test set predictions
+# and creates a scatter plot of the data
+def createPlot(phraseIdList, testSetPredictions):
+	xValues = []
+	yValues = testSetPredictions
+	fig, axs = plt.subplots(1, 3, figsize=(9, 3), sharey=True)
+
+	for x in range(0, len(phraseIdList)):
+		value = phraseIdList[x]
+		if value not in xValues:
+			xValues.append(value)
+
+	xValues.sort()
+	axs[0].bar(xValues, yValues)
+	axs[1].scatter(xValues, yValues)
+	axs[2].plot(xValues, yValues)
+	fig.suptitle('Categorical Plotting')
+
+	plt.show()
+
+
+
+
 dataMatrix, labelList, testMatrix = PreProcessing()
-trainingData(dataMatrix, labelList, testMatrix)
+logreg_classifier = trainingData(dataMatrix, labelList)
+phraseIdList, testSetPredictions = predictTest(vectorizedMatrix,labelList,logreg_classifier,'testset_1.csv', testMatrix)
+makeCsv(phraseIdList, testSetPredictions)
+#createPlot(phraseIdList, testSetPredictions)
+
+
 
 
 # ------------------ Ideas Box ---------------------------------
